@@ -1,0 +1,67 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: supplychain
+  datasource:
+    url: jdbc:h2:mem:supplychain;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      # 本地开发默认开启；生产部署请设置 H2_CONSOLE_ENABLED=false（或使用 prod profile）
+      enabled: ${H2_CONSOLE_ENABLED:true}
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+
+supplychain:
+  jwt:
+    # 密钥必须从环境变量 SUPPLYCHAIN_JWT_SECRET 注入（生产必须设置，至少 32 字节强密钥）。
+    # 这里刻意【不提供任何字符串兜底】：写死在 yml 里的密钥会进版本库，等于公开发布签名密钥，
+    # 任何人都能给自己签一个 admin token。未注入时 JwtUtil 会现生成一个随机密钥并打 error 告警
+    # ——随机密钥无法被伪造，代价只是重启后已签发 token 失效，本地开发不受影响。
+    secret: ${SUPPLYCHAIN_JWT_SECRET:}
+    expire-minutes: 480
+  split:
+    # 平台分账费率（示例：店家成交 120，平台挣 120 * 0.03 = 3.6）
+    platform-rate: 0.03
+
+app:
+  cors:
+    # 允许携带凭据访问本站 /api/** 的来源，逗号分隔；默认 "*" 保持历史行为。
+    # 生产收紧示例：https://admin.example.com,https://shop.example.com
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
+
+# ---- 数据库切换预留（本 MVP 仅 H2，外部库需添加对应 driver 依赖）----
+# MySQL:
+#   spring:
+#     datasource:
+#       url: jdbc:mysql://localhost:3306/supplychain?useSSL=false&serverTimezone=UTC
+#       driver-class-name: com.mysql.cj.jdbc.Driver
+#       username: supplychain
+#       password: changeit
+#     jpa:
+#       hibernate:
+#         ddl-auto: update
+# PostgreSQL:
+#   spring:
+#     datasource:
+#       url: jdbc:postgresql://localhost:5432/supplychain
+#       driver-class-name: org.postgresql.Driver
+#       username: supplychain
+#       password: changeit
+#     jpa:
+#       hibernate:
+#         ddl-auto: update
+# 激活方式：java -jar backend.jar --spring.profiles.active=mysql

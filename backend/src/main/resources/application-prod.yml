@@ -1,0 +1,47 @@
+# 生产 profile：java -jar backend.jar --spring.profiles.active=prod
+#
+# 说明：本文件为新增文件，不影响默认（无 profile）启动行为。
+# 默认 profile 仍使用 application.yml 的本地开发配置，二者互不干扰。
+#
+# 生产部署前必须通过环境变量注入以下值（默认值仅为占位/兜底，不可直接上线）：
+#   SUPPLYCHAIN_JWT_SECRET     JWT 签名密钥，至少 32 字节随机串（prod 无默认值，缺失即启动失败）
+#   SUPPLYCHAIN_DB_URL         生产库 JDBC URL
+#   SUPPLYCHAIN_DB_USERNAME    生产库用户名
+#   SUPPLYCHAIN_DB_PASSWORD    生产库口令
+#   APP_CORS_ALLOWED_ORIGINS   允许携带凭据的来源白名单，逗号分隔（仍默认 "*"，收紧属后续批次）
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${SUPPLYCHAIN_DB_URL:jdbc:h2:mem:supplychain;MODE=MySQL}
+    driver-class-name: ${SUPPLYCHAIN_DB_DRIVER:org.h2.Driver}
+    username: ${SUPPLYCHAIN_DB_USERNAME:sa}
+    password: ${SUPPLYCHAIN_DB_PASSWORD:}
+  h2:
+    console:
+      # 生产一律关闭 H2 控制台，避免外部直接连库执行 SQL
+      enabled: ${H2_CONSOLE_ENABLED:false}
+  jpa:
+    hibernate:
+      # 生产禁止 create-drop / update，schema 交由 Flyway / Liquibase 等迁移工具管理
+      ddl-auto: ${SUPPLYCHAIN_DDL_AUTO:validate}
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+  jackson:
+    default-property-inclusion: non_null
+
+supplychain:
+  jwt:
+    # 生产不提供任何兜底默认值：未注入 SUPPLYCHAIN_JWT_SECRET 时启动即失败（fail-fast）
+    secret: ${SUPPLYCHAIN_JWT_SECRET}
+    expire-minutes: ${SUPPLYCHAIN_JWT_EXPIRE_MINUTES:480}
+  split:
+    platform-rate: ${SUPPLYCHAIN_PLATFORM_RATE:0.03}
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
